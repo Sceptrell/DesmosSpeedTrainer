@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Desmos Speed Trainer — Compact Beautiful</title>
+
+<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=4435f284d2154cf48e80abbbffc842cd"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.10.0/math.js"></script>
+
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    margin: 20px;
+    background: #f5f7fa;
+    color: #222;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0px; /*space between title and Correct Box */
+    color: #007bff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
+  }
+
+  /* Stacked boxes */
+  #formula-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  /* Correct counter box */
+  #correct-counter {
+    font-size: 20px;
+    font-weight: 500;
+    background: #e6f0ff;
+    padding: 14px 184px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    margin-bottom: 8px; /* tiny space below counter */
+  }
+
+  /* Formula boxes */
+.formula-box {
+  font-size: 1.1rem;
+  background: #fff;
+  padding: 8px 14px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  width: 90%;
+  max-width: 600px;
+  text-align: center;
+  margin: 0; /* no extra margin between formula boxes */
+}
+
+/* Tiny gap between Target Formula and Input */
+.formula-box + .formula-box {
+  margin-top: 6px;
+}
+
+
+  #user-latex {
+    color: #007bff;
+    min-height: 28px;
+    font-weight: 500;
+  }
+
+  #result {
+    font-weight: bold;
+    margin-top: 20px;
+    font-size: 1.3rem;
+  }
+
+  #controls {
+    margin-top: 20px;
+  }
+
+  button {
+    padding: 10px 18px;
+    margin: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    transition: 0.2s all ease;
+    background: #007bff;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  button:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+  }
+
+  button:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  #stopwatch {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  }
+
+  #calculator {
+    width: 100%;
+    height: 450px;
+    margin-top: 20px;
+    border: 2px solid #007bff;
+    border-radius: 12px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+    background: #fff;
+  }
+
+  #help-button {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    font-weight: bold;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  }
+
+  #help-popup, #times-popup {
+    position: fixed;
+    width: 340px;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 16px;
+    display: none;
+    text-align: left;
+    z-index: 1000;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  }
+
+  #help-popup { top: 56px; left: 10px; }
+  #times-popup { top: 56px; right: 10px; max-height: 440px; overflow:auto; }
+
+  .close-btn {
+    cursor: pointer;
+    color: #a00;
+    float: right;
+    font-weight: bold;
+  }
+
+  #times-list li {
+    margin-bottom: 6px;
+    list-style: none;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #eee;
+  }
+
+  #times-list li:last-child {
+    border-bottom: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>Desmos Speed Trainer</h1>
+
+<!-- Vertical stacked cards (compact, minimal spacing) -->
+<div id="formula-stack">
+  <p id="correct-counter">✅ Correct: 0</p>
+  <p class="formula-box">Target Formula: <span id="target-latex"></span></p>
+  <p class="formula-box">Your Input (Desmos): <span id="user-latex">Nothing yet...</span></p>
+</div>
+
+<div id="controls">
+  <button id="check-answer">Check Answer</button>
+  <button id="new-formula">New Random Formula</button>
+  <button id="start-test" title="Alt+Enter">Start Test (Alt+Enter)</button>
+  <button id="show-times">Past Times</button>
+  <button id="end-test">End Test</button>
+</div>
+
+<p id="result"></p>
+<div id="stopwatch">00:00</div>
+<div id="calculator"></div>
+
+<div id="help-button" title="Info">?</div>
+<div id="help-popup">
+  <span class="close-btn" onclick="document.getElementById('help-popup').style.display='none'">✖</span>
+  <h3 style="margin-top:0">Info / Help</h3>
+  <p><strong>Shortcuts</strong>:</p>
+  <p>Alt+Enter = Start Test</p>
+  <p>Shift+Enter = Check & Advance if Correct</p>
+  <p>GitHub: <a href="https://github.com/Sceptrell/speedrunningdesmos" target="_blank">My Repo</a></p>
+</div>
+
+<div id="times-popup">
+  <span class="close-btn" onclick="document.getElementById('times-popup').style.display='none'">✖</span>
+  <h4 style="margin-top:0">Past Test Times</h4>
+  <ul id="times-list"></ul>
+  <p>Average per question (all runs): <span id="avg-time">0</span> s</p>
+  <button id="clear-times">Clear Times</button>
+</div>
+
+<script>
+// ===== Desmos init =====
+const elt = document.getElementById('calculator');
+const calculator = Desmos.GraphingCalculator(elt);
+
+// ===== Live user LaTeX preview =====
+let userLatex = "";
+calculator.observeEvent('change', function() {
+  const expressions = calculator.getExpressions();
+  if (expressions.length > 0) {
+    userLatex = expressions[expressions.length-1].latex || "";
+    try { katex.render(userLatex, document.getElementById('user-latex'), {throwOnError:false}); }
+    catch(e){ document.getElementById('user-latex').innerText = userLatex; }
+  } else {
+    userLatex = "";
+    document.getElementById('user-latex').innerText = "Nothing yet...";
+  }
+});
+
+// ===== Helpers & formatters =====
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function randNonZero(min,max){ let n=0; while(n===0) n = randInt(min,max); return n; }
+
+function formatTerm(coef, variable=''){
+  if(coef === 0) return '';
+  if(variable === '') return (coef>0 ? `+${coef}` : `${coef}`);
+  if(coef === 1) return `+${variable}`;
+  if(coef === -1) return `-${variable}`;
+  return (coef>0 ? `+${coef}${variable}` : `${coef}${variable}`);
+}
+
+function linearInner(a,b){
+  let s = '';
+  if(a===1) s='x'; else if(a===-1) s='-x'; else if(a!==0) s=`${a}x`;
+  if(b>0) s += `+${b}`; else if(b<0) s += `${b}`;
+  return s;
+}
+
+function formatFactor(x){ return x<0 ? `(x+${Math.abs(x)})` : `(x-${x})`; }
+function leadCoefForParen(a){ return a===1?'':a===-1?'-':`${a}`; }
+
+// Replace any "^(1/2)" occurrences with sqrt(base), handling nested parentheses
+function replacePowHalfWithSqrt(expr){
+  let idx;
+  while((idx = expr.indexOf('^(1/2)')) !== -1){
+    let beforeIdx = idx - 1;
+    if(beforeIdx < 0) break;
+    if(expr[beforeIdx] === ')'){
+      let depth = 0;
+      let j = beforeIdx;
+      for(; j >= 0; j--){
+        if(expr[j] === ')') depth++;
+        else if(expr[j] === '('){
+          depth--;
+          if(depth === 0) break;
+        }
+      }
+      if(j >= 0){
+        const inner = expr.slice(j + 1, beforeIdx);
+        expr = expr.slice(0, j) + 'sqrt(' + inner + ')' + expr.slice(idx + 6);
+        continue;
+      } else break;
+    } else {
+      let j = beforeIdx;
+      while(j >= 0 && /[0-9a-zA-Z_.]/.test(expr[j])) j--;
+      const start = j + 1;
+      const token = expr.slice(start, beforeIdx + 1);
+      expr = expr.slice(0, start) + 'sqrt(' + token + ')' + expr.slice(idx + 6);
+      continue;
+    }
+  }
+  return expr;
+}
+
+// ===== LaTeX -> math.js normalization =====
+function latexToMathjs(latex){
+  if(!latex) return "";
+  let expr = String(latex)
+    .replace(/^y=/,'')
+    .replace(/\\left/g,'')
+    .replace(/\\right/g,'');
+
+  expr = expr.replace(/\\sqrt\s*\[([^\]]*)\]\s*{([^}]*)}/g,'($2)^(1/($1))');
+  expr = expr.replace(/\\sqrt\s*{([^}]*)}/g,'sqrt($1)');
+  expr = expr.replace(/\^\{\s*1\/2\s*\}/g,'^(1/2)');
+  expr = expr.replace(/\^\{\s*0\.5\s*\}/g,'^(1/2)');
+  expr = expr.replace(/\^0\.5\b/g,'^(1/2)');
+  expr = expr.replace(/\^1\/2\b/g,'^(1/2)');
+  expr = expr.replace(/\^\{\s*\(\s*1\/2\s*\)\s*\}/g,'^(1/2)');
+  expr = replacePowHalfWithSqrt(expr);
+
+  expr = expr
+    .replace(/\\cdot/g,'*')
+    .replace(/\\frac\s*{([^}]*)}\s*{([^}]*)}/g,'($1)/($2)')
+    .replace(/\^\{([^}]*)\}/g,'^($1)')
+    .replace(/\|([^|]+)\|/g,'abs($1)')
+    .replace(/\\le/g,'<=')
+    .replace(/\\ge/g,'>=')
+    .replace(/\s+/g,'');
+
+  return expr;
+}
+
+// parse inequality (lhs, rhs, op)
+function parseInequality(rawLatex){
+  if(!rawLatex) return null;
+  let s = String(rawLatex).replace(/^y=/,'').replace(/\\left/g,'').replace(/\\right/g,'');
+  s = s.replace(/\\le/g,'<=').replace(/\\ge/g,'>=');
+  const m = s.match(/(<=|>=|<|>)/);
+  if(!m) return null;
+  const op = m[0], idx = s.indexOf(op), lhs=s.slice(0,idx).trim(), rhs=s.slice(idx+op.length).trim();
+  return {lhs,rhs,op};
+}
+
+function compareNumbers(left,right,op,tol=1e-9){
+  if(!isFinite(left)||!isFinite(right)) return false;
+  if(op==='<' ) return left < right - tol;
+  if(op==='<=') return left <= right + tol;
+  if(op==='>') return left > right - tol;
+  if(op==='>=') return left >= right + tol;
+  return false;
+}
+
+// Robust equivalence test using numeric sampling
+function checkEquivalenceRobust(userLatex, targetLatexArray){
+  try{
+    if(!userLatex) return false;
+    const userExprStr = latexToMathjs(userLatex);
+    if(!userExprStr) return false;
+
+    const testPoints = [-12,-9.7,-8,-6.3,-5,-4,-3.2,-2.5,-2,-1.5,-1,-0.75,-0.5,-0.1,0,0.1,0.5,1,1.2,2,3,4,5,6,7.5,9,10,12];
+    const tol = 1e-6;
+    const minValidPoints = 6;
+
+    for(const targetLatex of targetLatexArray){
+      const parsedTarget = parseInequality(targetLatex);
+      if(parsedTarget){
+        const parsedUser = parseInequality(userLatex);
+        if(!parsedUser) continue;
+
+        const lhsT = latexToMathjs(parsedTarget.lhs), rhsT = latexToMathjs(parsedTarget.rhs);
+        const lhsU = latexToMathjs(parsedUser.lhs), rhsU = latexToMathjs(parsedUser.rhs);
+
+        let validCount = 0, matchCount = 0;
+        for(const x of testPoints){
+          let tL,tR,uL,uR;
+          try{
+            tL = math.evaluate(lhsT,{x});
+            tR = math.evaluate(rhsT,{x});
+            uL = math.evaluate(lhsU,{x});
+            uR = math.evaluate(rhsU,{x});
+          } catch(e){ continue; }
+          if(!isFinite(tL) || !isFinite(tR) || !isFinite(uL) || !isFinite(uR)) continue;
+          validCount++;
+          const tComp = compareNumbers(tL,tR,parsedTarget.op);
+          const uComp = compareNumbers(uL,uR,parsedUser.op);
+          if(tComp === uComp) matchCount++;
+        }
+        if(validCount >= minValidPoints && matchCount / validCount >= 0.98) return true;
+      } else {
+        const targetExpr = latexToMathjs(targetLatex);
+        if(!targetExpr) continue;
+
+        let validCount = 0, matchCount = 0;
+        for(const x of testPoints){
+          let uVal, tVal;
+          try{
+            uVal = math.evaluate(userExprStr, {x});
+            tVal = math.evaluate(targetExpr, {x});
+          } catch(e){ continue; }
+          if(!isFinite(uVal) || !isFinite(tVal)) continue;
+          validCount++;
+          if(Math.abs(uVal - tVal) <= tol) matchCount++;
+        }
+        if(validCount >= minValidPoints && matchCount / validCount >= 0.995) return true;
+      }
+    }
+    return false;
+  } catch(e){
+    console.error('equivalence check error', e);
+    return false;
+  }
+}
+
+// ===== Formula generators =====
+function genLinear(){ const m=randNonZero(-10,10), b=randInt(-15,15); let s=formatTerm(m,'x')+formatTerm(b,''); if(s.startsWith('+')) s=s.slice(1); return [`y=${s}`]; }
+function genQuadraticStandard(){ const a=randNonZero(-5,5), b=randInt(-10,10), c=randInt(-10,10); let s=formatTerm(a,'x^2')+formatTerm(b,'x')+formatTerm(c); if(s.startsWith('+')) s=s.slice(1); return [`y=${s}`]; }
+function genQuadraticVertex(){ const a=randNonZero(-5,5), h=randInt(-5,5), k=randInt(-10,10); const hx=h<0?`(x+${Math.abs(h)})`:`(x-${h})`; const lead=leadCoefForParen(a); const kstr=k===0?'':(k>0?`+${k}`:`${k}`); return [`y=${lead}${hx}^2${kstr}`]; }
+function genQuadraticFactored(){ const a=randNonZero(-5,5), r1=randInt(-5,5), r2=randInt(-5,5); const lead=leadCoefForParen(a); return [`y=${lead}${formatFactor(r1)}${formatFactor(r2)}`]; }
+function genCubicStandard(){ const a=randNonZero(-3,3), b=randInt(-5,5), c=randInt(-5,5), d=randInt(-5,5); let s=formatTerm(a,'x^3')+formatTerm(b,'x^2')+formatTerm(c,'x')+formatTerm(d); if(s.startsWith('+')) s=s.slice(1); return [`y=${s}`]; }
+function genCubicFactored(){ const a=randNonZero(-3,3), r1=randInt(-5,5), r2=randInt(-5,5), r3=randInt(-5,5); const lead=leadCoefForParen(a); return [`y=${lead}${formatFactor(r1)}${formatFactor(r2)}${formatFactor(r3)}`]; }
+function genQuartic(){ const a=randNonZero(1,2), b=randInt(-5,5), c=randInt(-5,5), d=randInt(-5,5), e=randInt(-5,5); let s=formatTerm(a,'x^4')+formatTerm(b,'x^3')+formatTerm(c,'x^2')+formatTerm(d,'x')+formatTerm(e); if(s.startsWith('+')) s=s.slice(1); return [`y=${s}`]; }
+function genRational(){ const a=randNonZero(-5,5), b=randInt(-5,5), c=randNonZero(-5,5), d=randInt(-5,5); return [`y=\\frac{${linearInner(a,b)}}{${linearInner(c,d)}}`]; }
+function genRadical(){ const a=randNonZero(-5,5), b=randInt(-10,10); return [`y=\\sqrt{${linearInner(a,b)}}`]; }
+function genAbsolute(){ const a=randNonZero(-5,5), b=randInt(-10,10); return [`y=\\left|${linearInner(a,b)}\\right|`]; }
+function genExponential(){ const a=randNonZero(1,5), b=randInt(2,5); return [`y=${a}*${b}^x`]; }
+function genCircle(){ const h=randInt(-5,5), k=randInt(-5,5), r=randInt(1,5); const hx=h<0?`(x+${Math.abs(h)})`:`(x-${h})`; const inner=`${r*r}-${hx}^2`; const upper=(k===0)?`y=\\sqrt{${inner}}`:`y=${k}+\\sqrt{${inner}}`; const lower=(k===0)?`y=-\\sqrt{${inner}}`:`y=${k}-\\sqrt{${inner}}`; return [upper,lower]; }
+function genPiecewise(){ const a=randNonZero(-5,5), b=randInt(-10,10), c=randNonZero(-5,5), d=randInt(-5,5); return [`y=${formatTerm(a,'x')+formatTerm(b,'')}`.replace(/^\+/,''), `y=${formatTerm(c,'x')+formatTerm(d,'')}`.replace(/^\+/,'')]; }
+function genSystemLinear(){ const m1=randNonZero(-5,5), b1=randInt(-10,10), m2=randNonZero(-5,5), b2=randInt(-10,10); return [`y=${formatTerm(m1,'x')+formatTerm(b1,'')}`.replace(/^\+/,''), `y=${formatTerm(m2,'x')+formatTerm(b2,'')}`.replace(/^\+/,'')]; }
+function genInequalityLinear(){ const a=randNonZero(-5,5), b=randInt(-10,10), c=randInt(-10,10); return [`${formatTerm(a,'x')+formatTerm(b,'')}<${c}`]; }
+function genInequalityQuadratic(){ const a=randNonZero(1,3), b=randInt(-5,5), c=randInt(-5,5); let expr=formatTerm(a,'x^2')+formatTerm(b,'x')+formatTerm(c); if(expr.startsWith('+')) expr=expr.slice(1); return [`${expr}<=0`]; }
+
+const generators=[genLinear,genQuadraticStandard,genQuadraticVertex,genQuadraticFactored,genCubicStandard,genCubicFactored,genQuartic,genRational,genRadical,genAbsolute,genExponential,genCircle,genPiecewise,genSystemLinear,genInequalityLinear,genInequalityQuadratic];
+
+// ===== New formula logic =====
+let targetFormulaArray = [], formulaSolved = false;
+function newFormula(){
+  // Clear Desmos and show a fresh target (does NOT work lol)
+  calculator.setExpressions([]);
+  const idx = randInt(0, generators.length - 1);
+  targetFormulaArray = generators[idx]();
+  const display = targetFormulaArray[0] || '';
+  try {
+    katex.render(display, document.getElementById('target-latex'), {throwOnError:false});
+  } catch(e) {
+    document.getElementById('target-latex').innerText = display;
+  }
+  formulaSolved = false;
+  userLatex = "";
+  document.getElementById('user-latex').innerText = "Nothing yet...";
+  document.getElementById('result').innerText = "";
+}
+newFormula();
+
+// ===== Stopwatch & Test state =====
+let stopwatchInterval = null, elapsedSeconds = 0;
+let testMode = false, testCount = 0, currentQuestion = 0;
+
+function startStopwatch(){ 
+  elapsedSeconds = 0; updateStopwatch();
+  if(stopwatchInterval) clearInterval(stopwatchInterval);
+  stopwatchInterval = setInterval(()=>{ elapsedSeconds++; updateStopwatch(); }, 1000);
+}
+function stopStopwatch(){ if(stopwatchInterval) clearInterval(stopwatchInterval); stopwatchInterval = null; }
+function updateStopwatch(){
+  const m = String(Math.floor(elapsedSeconds/60)).padStart(2,'0');
+  const s = String(elapsedSeconds%60).padStart(2,'0');
+  document.getElementById('stopwatch').innerText = `${m}:${s}`;
+}
+
+// ===== Past times storage & UI =====
+let pastTimes = JSON.parse(localStorage.getItem('desmosPastTimes')||'[]');
+function savePastTimes(){ localStorage.setItem('desmosPastTimes', JSON.stringify(pastTimes)); updateTimesPopup(); }
+function updateTimesPopup(){
+  const list = document.getElementById('times-list');
+  list.innerHTML = '';
+  pastTimes.forEach((t,i)=>{
+    const date = new Date(t.timestamp).toLocaleString();
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${t.total}s</strong> — ${t.questions} q — ${t.perQuestion.toFixed(2)} s/q<br><small>${date}</small> <button data-i="${i}" class="del-btn">Delete</button>`;
+    list.appendChild(li);
+  });
+  const avg = pastTimes.length > 0 ? (pastTimes.reduce((a,b)=>a + b.perQuestion,0)/pastTimes.length).toFixed(2) : '0';
+  document.getElementById('avg-time').innerText = avg;
+  // attach delete handlers
+  document.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{ const idx = Number(ev.target.getAttribute('data-i')); pastTimes.splice(idx,1); savePastTimes(); });
+  });
+}
+document.getElementById('clear-times').addEventListener('click', ()=>{ pastTimes = []; savePastTimes(); });
+updateTimesPopup();
+
+// ===== Show/hide popups =====
+document.getElementById('show-times').addEventListener('click', ()=>{ 
+  const p = document.getElementById('times-popup'); p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('help-button').addEventListener('click', ()=>{ 
+  const p = document.getElementById('help-popup'); p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+
+// ===== Test mode start/end =====
+function startTest(){
+  const n = parseInt(prompt("Enter number of expressions for the test:"));
+  if(!n || n <= 0) return;
+  testMode = true; testCount = n; currentQuestion = 0;
+  newFormula();
+  startStopwatch();
+  document.getElementById('times-popup').style.display = 'none';
+}
+
+function endTest(finished = false){
+  if(!testMode) return;
+  stopStopwatch();
+  const answered = finished ? testCount : currentQuestion;
+  if(answered === 0){
+    alert('Test ended with 0 questions answered — nothing saved.');
+  } else {
+    const totalTime = elapsedSeconds;
+    const perQ = totalTime / answered;
+    pastTimes.push({ total: totalTime, questions: answered, perQuestion: perQ, timestamp: new Date().toISOString() });
+    savePastTimes();
+    alert(`Test ended. Total: ${totalTime}s — ${answered} question(s) — avg ${perQ.toFixed(2)} s/q`);
+  }
+  testMode = false; testCount = 0; currentQuestion = 0;
+  newFormula();
+}
+
+// ===== Answer checking (single place) =====
+function handleCheckAnswer(){
+  const ok = checkEquivalenceRobust(userLatex, targetFormulaArray);
+  if(ok){
+    document.getElementById('result').innerText = "✅ Correct!";
+    document.getElementById('result').style.color = "green";
+    formulaSolved = true;
+    if(testMode){
+      currentQuestion++;
+      if(currentQuestion >= testCount){
+        // finished the test
+        endTest(true);
+      }
+    }
+  } else {
+    document.getElementById('result').innerText = "❌ Not equivalent!";
+    document.getElementById('result').style.color = "red";
+  }
+  return ok;
+}
+
+// ===== Wire up buttons (I'm not the impostor I swear) =====
+document.getElementById('check-answer').addEventListener('click', ()=>{ handleCheckAnswer(); });
+document.getElementById('new-formula').addEventListener('click', ()=>{ newFormula(); });
+document.getElementById('start-test').addEventListener('click', ()=>{ startTest(); });
+document.getElementById('end-test').addEventListener('click', ()=>{ 
+  if(confirm('End test early and save results for questions answered so far?')) endTest(false);
+});
+
+// ===== Keyboard shortcuts =====
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    if(e.altKey){
+      startTest();
+      return;
+    }
+    if(e.shiftKey){
+      // Shift+Enter: check first, then show next only if correct and test isn't ended by check
+      const ok = handleCheckAnswer();
+      // If ok and testMode and still within test, new formula will be shown below:
+      if(ok){
+        // If we are in testMode and endTest was called already (because it finished), don't newFormula.
+        if(!testMode) { newFormula(); } else {
+          // if testMode and currentQuestion < testCount then next question should be shown
+          if(currentQuestion < testCount) newFormula();
+        }
+      }
+      return;
+    }
+    // plain Enter: just check
+    handleCheckAnswer();
+  }
+});
+
+// Prevent accidental selection of buttons when pressing enter inside desmos input.
+
+// ===== CORRECT COUNTER (ADDED, minimal + guarded) =====
+let correctCount = 0;
+let baseFontSize = 22;
+function incrementCounter(){
+  correctCount++;
+  const counter = document.getElementById('correct-counter');
+  counter.innerText = `✅ Correct: ${correctCount}`;
+  // Make it a bit larger permanently each time
+  baseFontSize += 0.8;
+  counter.style.fontSize = baseFontSize + 'px';
+  // Bold briefly
+  counter.style.fontWeight = 'bold';
+  setTimeout(()=>{ counter.style.fontWeight = 'normal'; }, 1000);
+}
+
+// Patch: call incrementCounter only when an expression becomes correct (not on repeat checks)
+// So we wrap the original handleCheckAnswer logic with a guard by redefining it in place:
+(function(){
+  const originalHandle = handleCheckAnswer; // the function defined above
+  handleCheckAnswer = function(){
+    // capture previous solved state
+    const wasSolved = formulaSolved;
+    const ok = originalHandle();
+    // increment only when it just transitioned to correct
+    if(ok && !wasSolved){
+      incrementCounter();
+    }
+    return ok;
+  };
+})();
+
+</script>
+
+</body>
+</html>
