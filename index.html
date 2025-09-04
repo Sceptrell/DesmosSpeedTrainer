@@ -376,16 +376,21 @@ function compareNumbers(left,right,op,tol=1e-9){
 function checkEquivalenceRobust(userLatex, targetLatexArray){
   try{
     if(!userLatex) return false;
+
     const userExprStr = latexToMathjs(userLatex);
     if(!userExprStr) return false;
 
-    const testPoints = [-12,-9.7,-8,-6.3,-5,-4,-3.2,-2.5,-2,-1.5,-1,-0.75,-0.5,-0.1,0,0.1,0.5,1,1.2,2,3,4,5,6,7.5,9,10,12];
+    // Default test points
+    const defaultPoints = [];
+    for(let x=-12; x<=12; x+=0.5) defaultPoints.push(x);
+
     const tol = 1e-6;
-    const minValidPoints = 6;
 
     for(const targetLatex of targetLatexArray){
       const parsedTarget = parseInequality(targetLatex);
+
       if(parsedTarget){
+        // Inequality case
         const parsedUser = parseInequality(userLatex);
         if(!parsedUser) continue;
 
@@ -393,7 +398,7 @@ function checkEquivalenceRobust(userLatex, targetLatexArray){
         const lhsU = latexToMathjs(parsedUser.lhs), rhsU = latexToMathjs(parsedUser.rhs);
 
         let validCount = 0, matchCount = 0;
-        for(const x of testPoints){
+        for(const x of defaultPoints){
           let tL,tR,uL,uR;
           try{
             tL = math.evaluate(lhsT,{x});
@@ -407,13 +412,26 @@ function checkEquivalenceRobust(userLatex, targetLatexArray){
           const uComp = compareNumbers(uL,uR,parsedUser.op);
           if(tComp === uComp) matchCount++;
         }
-        if(validCount >= minValidPoints && matchCount / validCount >= 0.98) return true;
+        if(validCount >= Math.min(6, defaultPoints.length) && matchCount / validCount >= 0.98) return true;
+
       } else {
+        // Expression case
         const targetExpr = latexToMathjs(targetLatex);
         if(!targetExpr) continue;
 
+        // Filter points where both target and user are finite
+        const finitePoints = defaultPoints.filter(x=>{
+          try{
+            const tVal = math.evaluate(targetExpr,{x});
+            const uVal = math.evaluate(userExprStr,{x});
+            return isFinite(tVal) && isFinite(uVal);
+          } catch(e){ return false; }
+        });
+
+        if(finitePoints.length === 0) continue;
+
         let validCount = 0, matchCount = 0;
-        for(const x of testPoints){
+        for(const x of finitePoints){
           let uVal, tVal;
           try{
             uVal = math.evaluate(userExprStr, {x});
@@ -423,10 +441,14 @@ function checkEquivalenceRobust(userLatex, targetLatexArray){
           validCount++;
           if(Math.abs(uVal - tVal) <= tol) matchCount++;
         }
+
+        // Dynamic minimum valid points
+        const minValidPoints = Math.min(6, finitePoints.length);
         if(validCount >= minValidPoints && matchCount / validCount >= 0.995) return true;
       }
     }
     return false;
+
   } catch(e){
     console.error('equivalence check error', e);
     return false;
