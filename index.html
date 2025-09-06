@@ -568,7 +568,9 @@ function genInequalityLinear() {
   return [`${cleanExpr(formatTerm(a,'x')+formatTerm(b,''))}<${c}`];
 }
 
-function genInequalityQuadratic() {
+/*
+Commenting this out because it sometimes returns a false positive equivalency check and doesn't really show up on the SAT
+  function genInequalityQuadratic() {
   const a = randNonZero(1, 3);
   const b = randInt(-5, 5);
   const c = randInt(-5, 5);
@@ -579,13 +581,13 @@ function genInequalityQuadratic() {
 
   const randomBound = randInt(-10, 10); // random number for the inequality
   return [`${cleanExpr(expr)}${randomIneq}${randomBound}`];
-}
+} */
 
 const generators=[
   genLinear,genQuadraticStandard,genQuadraticVertex,genQuadraticFactored,
   genCubicStandard,genCubicFactored,genQuartic,genRational,genRadical,
   genAbsolute,genExponential,genCircle,genPiecewise,genSystemLinear,
-  genInequalityLinear,genInequalityQuadratic
+  genInequalityLinear//,genInequalityQuadratic
 ];
 
 // ===== New formula logic =====
@@ -773,6 +775,7 @@ function incrementCounter(){
 
 </body>
 </html>
+
 
 
 
