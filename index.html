@@ -384,7 +384,7 @@ function compareNumbers(left,right,op,tol=1e-9){
   return false;
 }
 
-// “Robust” (it's really not :sob:) equivalence test using numeric sampling
+// Robust equivalence test using numeric sampling
 function checkEquivalenceRobust(userLatex, targetLatexArray){
   try{
     if(!userLatex) return false;
